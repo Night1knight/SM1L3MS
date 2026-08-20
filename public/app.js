@@ -19,7 +19,10 @@ let socket = null;
 
 let roomId = null;
 
-let encryptionKey = null;
+let ecdhKeyPair = null;
+let sharedEncryptionKey = null;
+let peerPublicKey = null;
+let keyExchangeStarted = false;
 
 
 /*
