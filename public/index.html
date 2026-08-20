@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+
+<html lang="tr">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>Secure Carrier</title>
+
+    <link
+        rel="stylesheet"
+        href="style.css"
+    >
+
+</head>
+
+<body>
+
+<div class="app">
+
+    <!-- SIDEBAR -->
+
+    <aside class="sidebar">
+
+        <div class="brand">
+
+            <div class="brand-icon">
+                ◆
+            </div>
+
+            <div>
+
+                <strong>
+                    Secure Carrier
+                </strong>
+
+                <small>
+                    Private Messaging
+                </small>
+
+            </div>
+
+        </div>
+
+
+        <button
+            id="newRoom"
+            class="primary-button"
+        >
+            ＋ Yeni Sohbet
+        </button>
+
+
+        <div class="room-panel">
+
+            <div class="panel-title">
+                SOHBET KODU
+            </div>
+
+            <div class="room-row">
+
+                <code id="roomCode">
+                    —
+                </code>
+
+                <button
+                    id="copyRoom"
+                    class="copy-button"
+                >
+                    ⧉
+                </button>
+
+            </div>
+
+
+            <button
+                id="joinRoom"
+                class="secondary-button"
+            >
+                Sohbete Katıl
+            </button>
+
+        </div>
+
+
+        <div class="security-card">
+
+            <div class="security-icon">
+                🔒
+            </div>
+
+            <div>
+
+                <strong>
+                    Uçtan Uca Şifreleme
+                </strong>
+
+                <p>
+                    Mesajlar tarayıcıda
+                    şifrelenir.
+                </p>
+
+            </div>
+
+        </div>
+
+    </aside>
+
+    <div id="sidebarOverlay" class="sidebar-overlay"></div>
+
+
+    <!-- CHAT -->
+
+    <main class="chat">
+
+        <!-- HEADER -->
+
+        <header class="chat-header">
+
+            <button
+                id="menuToggle"
+                class="menu-toggle"
+                aria-label="Menüyü aç"
+            >
+                ☰
+            </button>
+
+            <div class="avatar">
+                SC
+            </div>
+
+            <div class="peer-info">
+
+                <strong>
+                    Secure Chat
+                </strong>
+
+                <span id="presence">
+                    Bağlanıyor…
+                </span>
+
+            </div>
+
+            <div class="header-lock">
+                🔒
+            </div>
+
+        </header>
+
+
+        <!-- MESSAGES -->
+
+        <section
+            id="messages"
+            class="messages"
+        >
+
+            <div class="welcome">
+
+                <div class="welcome-icon">
+                    🔐
+                </div>
+
+                <h2>
+                    Güvenli sohbet
+                </h2>
+
+                <p>
+                    Yeni bir sohbet oluşturun
+                    veya mevcut sohbet koduyla
+                    katılın.
+                </p>
+
+            </div>
+
+        </section>
+
+
+        <!-- TYPING -->
+
+        <div
+            id="typing"
+            class="typing hidden"
+        >
+            Karşı taraf yazıyor…
+        </div>
+
+
+        <!-- COMPOSER -->
+
+        <form
+            id="composer"
+            class="composer"
+        >
+
+            <textarea
+                id="input"
+                rows="1"
+                placeholder="Mesaj yaz…"
+                autocomplete="off"
+            ></textarea>
+
+            <button
+                class="send-button"
+                type="submit"
+            >
+                ➤
+            </button>
+
+        </form>
+
+    </main>
+
+</div>
+
+
+<script src="app.js"></script>
+
+</body>
+
+</html>

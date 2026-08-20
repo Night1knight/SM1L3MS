@@ -1,0 +1,762 @@
+* {
+    box-sizing: border-box;
+}
+
+
+body {
+
+    margin: 0;
+
+    font-family:
+        Inter,
+        system-ui,
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        sans-serif;
+
+    background: #0b1118;
+
+    color: #edf4fb;
+
+}
+
+
+/*
+==========================================
+APP
+==========================================
+*/
+
+.app {
+
+    width: 100%;
+
+    height: 100vh;
+
+    display: flex;
+
+}
+
+
+/*
+==========================================
+SIDEBAR
+==========================================
+*/
+
+.sidebar {
+
+    width: 320px;
+
+    background: #101923;
+
+    border-right:
+        1px solid #22303d;
+
+    padding: 24px;
+
+    display: flex;
+
+    flex-direction: column;
+
+    gap: 18px;
+
+}
+
+
+/*
+==========================================
+BRAND
+==========================================
+*/
+
+.brand {
+
+    display: flex;
+
+    align-items: center;
+
+    gap: 12px;
+
+    font-size: 18px;
+
+}
+
+
+.brand small {
+
+    display: block;
+
+    color: #7f94a7;
+
+    font-size: 11px;
+
+    margin-top: 3px;
+
+}
+
+
+.brand-icon {
+
+    width: 40px;
+
+    height: 40px;
+
+    border-radius: 12px;
+
+    background: #1c8f72;
+
+    display: grid;
+
+    place-items: center;
+
+}
+
+
+/*
+==========================================
+BUTTONS
+==========================================
+*/
+
+.primary-button {
+
+    border: none;
+
+    border-radius: 12px;
+
+    padding: 14px;
+
+    background: #1c8f72;
+
+    color: white;
+
+    font-weight: 700;
+
+    cursor: pointer;
+
+}
+
+
+.primary-button:hover {
+
+    filter: brightness(1.1);
+
+}
+
+
+.secondary-button {
+
+    border: none;
+
+    border-radius: 10px;
+
+    padding: 12px;
+
+    background: #1b2935;
+
+    color: #d9e6ef;
+
+    width: 100%;
+
+    margin-top: 12px;
+
+    cursor: pointer;
+
+}
+
+
+/*
+==========================================
+ROOM
+==========================================
+*/
+
+.room-panel {
+
+    background: #15212c;
+
+    border:
+        1px solid #263746;
+
+    border-radius: 15px;
+
+    padding: 15px;
+
+}
+
+
+.panel-title {
+
+    color: #7890a2;
+
+    font-size: 10px;
+
+    letter-spacing: 1px;
+
+}
+
+
+.room-row {
+
+    display: flex;
+
+    align-items: center;
+
+    gap: 8px;
+
+    margin-top: 8px;
+
+}
+
+
+.room-row code {
+
+    flex: 1;
+
+    background: #0d151d;
+
+    padding: 10px;
+
+    border-radius: 8px;
+
+    overflow: hidden;
+
+    text-overflow: ellipsis;
+
+}
+
+
+.copy-button {
+
+    background: #243441;
+
+    color: white;
+
+    border: none;
+
+    border-radius: 8px;
+
+    padding: 9px;
+
+    cursor: pointer;
+
+}
+
+
+/*
+==========================================
+SECURITY CARD
+==========================================
+*/
+
+.security-card {
+
+    margin-top: auto;
+
+    display: flex;
+
+    gap: 10px;
+
+    color: #9bb0c0;
+
+    font-size: 12px;
+
+}
+
+
+.security-card p {
+
+    margin: 4px 0 0;
+
+    color: #718696;
+
+}
+
+
+/*
+==========================================
+CHAT
+==========================================
+*/
+
+.chat {
+
+    flex: 1;
+
+    min-width: 0;
+
+    display: flex;
+
+    flex-direction: column;
+
+}
+
+
+/*
+==========================================
+HEADER
+==========================================
+*/
+
+.chat-header {
+
+    height: 72px;
+
+    border-bottom:
+        1px solid #22303d;
+
+    display: flex;
+
+    align-items: center;
+
+    padding: 0 25px;
+
+    gap: 12px;
+
+    background: #0f1821;
+
+}
+
+
+.avatar {
+
+    width: 42px;
+
+    height: 42px;
+
+    border-radius: 50%;
+
+    background: #1c8f72;
+
+    display: grid;
+
+    place-items: center;
+
+    font-weight: 800;
+
+}
+
+
+.peer-info span {
+
+    display: block;
+
+    color: #79a091;
+
+    font-size: 12px;
+
+    margin-top: 3px;
+
+}
+
+
+.header-lock {
+
+    margin-left: auto;
+
+}
+
+
+/*
+==========================================
+MENU TOGGLE (mobile)
+==========================================
+*/
+
+.menu-toggle {
+
+    display: none;
+
+    background: none;
+
+    border: none;
+
+    color: #edf4fb;
+
+    font-size: 22px;
+
+    line-height: 1;
+
+    cursor: pointer;
+
+    padding: 4px 8px;
+
+}
+
+
+/*
+==========================================
+SIDEBAR OVERLAY (mobile)
+==========================================
+*/
+
+.sidebar-overlay {
+
+    display: none;
+
+}
+
+
+/*
+==========================================
+MESSAGES
+==========================================
+*/
+
+.messages {
+
+    flex: 1;
+
+    overflow-y: auto;
+
+    padding:
+        28px
+        7%;
+
+    display: flex;
+
+    flex-direction: column;
+
+    gap: 9px;
+
+    background:
+        radial-gradient(
+            circle at 50% 0,
+            #14212b,
+            #0b1118 50%
+        );
+
+}
+
+
+/*
+==========================================
+WELCOME
+==========================================
+*/
+
+.welcome {
+
+    text-align: center;
+
+    max-width: 420px;
+
+    margin: auto;
+
+    color: #8095a6;
+
+}
+
+
+.welcome-icon {
+
+    font-size: 38px;
+
+}
+
+
+.welcome h2 {
+
+    color: #eaf2f7;
+
+    margin:
+        12px
+        0
+        7px;
+
+}
+
+
+.welcome p {
+
+    line-height: 1.5;
+
+}
+
+
+/*
+==========================================
+MESSAGE BUBBLE
+==========================================
+*/
+
+.bubble {
+
+    max-width:
+        min(70%, 620px);
+
+    padding:
+        10px
+        13px;
+
+    border-radius: 16px;
+
+    background: #182633;
+
+    align-self: flex-start;
+
+    box-shadow:
+        0
+        2px
+        8px
+        #0003;
+
+    word-break: break-word;
+
+    line-height: 1.45;
+
+}
+
+
+.bubble.mine {
+
+    background: #14664f;
+
+    align-self: flex-end;
+
+}
+
+
+.time {
+
+    font-size: 10px;
+
+    color: #a8bbc6;
+
+    margin-left: 8px;
+
+    white-space: nowrap;
+
+}
+
+
+/*
+==========================================
+TYPING
+==========================================
+*/
+
+.typing {
+
+    padding:
+        0
+        7%;
+
+    height: 22px;
+
+    color: #718b9b;
+
+    font-size: 12px;
+
+}
+
+
+.hidden {
+
+    visibility: hidden;
+
+}
+
+
+/*
+==========================================
+COMPOSER
+==========================================
+*/
+
+.composer {
+
+    display: flex;
+
+    gap: 10px;
+
+    padding:
+        14px
+        7%;
+
+    border-top:
+        1px solid #22303d;
+
+    background: #0f1821;
+
+}
+
+
+.composer textarea {
+
+    flex: 1;
+
+    resize: none;
+
+    border:
+        1px solid #2b3d4c;
+
+    border-radius: 16px;
+
+    background: #15212c;
+
+    color: white;
+
+    padding:
+        12px
+        15px;
+
+    outline: none;
+
+    max-height: 130px;
+
+}
+
+
+.composer textarea:focus {
+
+    border-color: #1c8f72;
+
+}
+
+
+.send-button {
+
+    width: 46px;
+
+    border: none;
+
+    border-radius: 14px;
+
+    background: #1c8f72;
+
+    color: white;
+
+    font-size: 20px;
+
+    cursor: pointer;
+
+}
+
+
+.send-button:hover {
+
+    filter: brightness(1.1);
+
+}
+
+
+/*
+==========================================
+MOBILE
+==========================================
+*/
+
+@media (max-width: 700px) {
+
+    .menu-toggle {
+
+        display: block;
+
+    }
+
+
+    .sidebar {
+
+        width: 85%;
+
+        max-width: 320px;
+
+        height: 100vh;
+
+        position: fixed;
+
+        top: 0;
+
+        left: 0;
+
+        z-index: 30;
+
+        display: flex;
+
+        transform: translateX(-100%);
+
+        transition: transform 0.25s ease;
+
+        box-shadow:
+            2px
+            0
+            18px
+            #0007;
+
+    }
+
+
+    .sidebar.open {
+
+        transform: translateX(0);
+
+    }
+
+
+    .sidebar-overlay {
+
+        display: block;
+
+        position: fixed;
+
+        inset: 0;
+
+        background: #000a;
+
+        z-index: 20;
+
+        opacity: 0;
+
+        pointer-events: none;
+
+        transition: opacity 0.25s ease;
+
+    }
+
+
+    .sidebar-overlay.open {
+
+        opacity: 1;
+
+        pointer-events: auto;
+
+    }
+
+
+    .chat-header {
+
+        padding:
+            0
+            15px;
+
+    }
+
+
+    .messages {
+
+        padding:
+            20px
+            15px;
+
+    }
+
+
+    .composer {
+
+        padding:
+            12px
+            15px;
+
+    }
+
+
+    .bubble {
+
+        max-width: 84%;
+
+    }
+
+}
