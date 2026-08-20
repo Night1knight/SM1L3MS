@@ -19,9 +19,19 @@ let socket = null;
 
 let roomId = null;
 
+
+/*
+==========================================
+ECDH + AES-GCM
+==========================================
+*/
+
 let ecdhKeyPair = null;
+
 let sharedEncryptionKey = null;
+
 let peerPublicKey = null;
+
 let keyExchangeStarted = false;
 
 
@@ -45,11 +55,33 @@ function connect() {
         );
 
 
-    socket.onopen = () => {
+    socket.onopen = async () => {
 
         setPresence(
             "Bağlı"
         );
+
+
+        try {
+
+            await ensureECDHKeyPair();
+
+            await sendPublicKey();
+
+        }
+
+        catch (error) {
+
+            console.error(
+                "ECDH başlatma hatası:",
+                error
+            );
+
+            setPresence(
+                "Şifreleme başlatılamadı"
+            );
+
+        }
 
     };
 
@@ -60,10 +92,21 @@ function connect() {
             "Bağlantı kesildi"
         );
 
+        sharedEncryptionKey = null;
+
+        peerPublicKey = null;
+
+        keyExchangeStarted = false;
+
     };
 
 
-    socket.onerror = () => {
+    socket.onerror = (error) => {
+
+        console.error(
+            "WebSocket hatası:",
+            error
+        );
 
         setPresence(
             "Bağlantı hatası"
@@ -75,10 +118,28 @@ function connect() {
     socket.onmessage =
         async (event) => {
 
-            const packet =
-                JSON.parse(
-                    event.data
+            let packet;
+
+
+            try {
+
+                packet =
+                    JSON.parse(
+                        event.data
+                    );
+
+            }
+
+            catch (error) {
+
+                console.error(
+                    "Geçersiz WebSocket paketi:",
+                    error
                 );
+
+                return;
+
+            }
 
 
             /*
@@ -152,6 +213,73 @@ function connect() {
                     "Çevrimiçi"
                 );
 
+
+                /*
+                Yeni peer bağlandığında
+                public key'i tekrar gönder.
+                */
+
+                try {
+
+                    keyExchangeStarted =
+                        false;
+
+                    await sendPublicKey();
+
+                }
+
+                catch (error) {
+
+                    console.error(
+                        "Public key gönderilemedi:",
+                        error
+                    );
+
+                }
+
+                return;
+            }
+
+
+            /*
+            ==============================
+            PEER PUBLIC KEY
+            ==============================
+            */
+
+            if (
+                packet.type ===
+                "peer_key"
+            ) {
+
+                try {
+
+                    await importPeerPublicKey(
+                        packet.publicKey
+                    );
+
+                    setPresence(
+                        "Şifreli bağlantı hazır"
+                    );
+
+                }
+
+                catch (error) {
+
+                    console.error(
+                        "ECDH anahtar değişimi başarısız:",
+                        error
+                    );
+
+                    sharedEncryptionKey =
+                        null;
+
+                    setPresence(
+                        "Şifreleme anahtarı oluşturulamadı"
+                    );
+
+                }
+
                 return;
             }
 
@@ -166,6 +294,15 @@ function connect() {
                 packet.type ===
                 "peer_disconnected"
             ) {
+
+                sharedEncryptionKey =
+                    null;
+
+                peerPublicKey =
+                    null;
+
+                keyExchangeStarted =
+                    false;
 
                 setPresence(
                     "Bağlantı bekleniyor"
@@ -225,7 +362,13 @@ function connect() {
 
                 }
 
-                catch {
+                catch (error) {
+
+                    console.error(
+                        "Decrypt error:",
+                        error
+                    );
+
 
                     addBubble(
                         "Mesaj şifresi çözülemedi.",
@@ -264,27 +407,205 @@ function connect() {
 
 /*
 ==========================================
-AES KEY
+ECDH KEY PAIR
 ==========================================
 */
 
-async function ensureEncryptionKey() {
+async function ensureECDHKeyPair() {
 
-    if (encryptionKey) {
+    if (
+        ecdhKeyPair
+    ) {
+
         return;
+
     }
 
 
-    encryptionKey =
+    ecdhKeyPair =
         await crypto.subtle.generateKey(
 
             {
-                name: "AES-GCM",
+                name:
+                    "ECDH",
 
-                length: 256
+                namedCurve:
+                    "P-256"
             },
 
             true,
+
+            [
+                "deriveKey"
+            ]
+
+        );
+
+}
+
+
+/*
+==========================================
+EXPORT PUBLIC KEY
+==========================================
+*/
+
+async function exportPublicKey() {
+
+    await ensureECDHKeyPair();
+
+
+    const publicKey =
+        await crypto.subtle.exportKey(
+            "jwk",
+            ecdhKeyPair.publicKey
+        );
+
+
+    return JSON.stringify(
+        publicKey
+    );
+
+}
+
+
+/*
+==========================================
+SEND PUBLIC KEY
+==========================================
+*/
+
+async function sendPublicKey() {
+
+    if (
+        !socket ||
+        socket.readyState !==
+        WebSocket.OPEN
+    ) {
+
+        return;
+
+    }
+
+
+    if (
+        keyExchangeStarted
+    ) {
+
+        return;
+
+    }
+
+
+    keyExchangeStarted =
+        true;
+
+
+    const publicKey =
+        await exportPublicKey();
+
+
+    socket.send(
+        JSON.stringify({
+
+            type:
+                "public_key",
+
+            publicKey:
+                publicKey
+
+        })
+    );
+
+}
+
+
+/*
+==========================================
+IMPORT PEER PUBLIC KEY
+==========================================
+*/
+
+async function importPeerPublicKey(
+    publicKeyString
+) {
+
+    await ensureECDHKeyPair();
+
+
+    if (
+        typeof publicKeyString !==
+        "string"
+    ) {
+
+        throw new Error(
+            "Geçersiz public key."
+        );
+
+    }
+
+
+    const jwk =
+        JSON.parse(
+            publicKeyString
+        );
+
+
+    const importedPublicKey =
+        await crypto.subtle.importKey(
+
+            "jwk",
+
+            jwk,
+
+            {
+                name:
+                    "ECDH",
+
+                namedCurve:
+                    "P-256"
+            },
+
+            false,
+
+            []
+
+        );
+
+
+    peerPublicKey =
+        importedPublicKey;
+
+
+    /*
+    ==========================================
+    DERIVE SHARED AES-256-GCM KEY
+    ==========================================
+    */
+
+    sharedEncryptionKey =
+        await crypto.subtle.deriveKey(
+
+            {
+                name:
+                    "ECDH",
+
+                public:
+                    importedPublicKey
+
+            },
+
+            ecdhKeyPair.privateKey,
+
+            {
+                name:
+                    "AES-GCM",
+
+                length:
+                    256
+            },
+
+            false,
 
             [
                 "encrypt",
@@ -292,6 +613,53 @@ async function ensureEncryptionKey() {
             ]
 
         );
+
+}
+
+
+/*
+==========================================
+WAIT FOR ENCRYPTION KEY
+==========================================
+*/
+
+async function waitForEncryptionKey(
+    timeout = 10000
+) {
+
+    const start =
+        Date.now();
+
+
+    while (
+        !sharedEncryptionKey
+    ) {
+
+        if (
+            Date.now() -
+            start >
+            timeout
+        ) {
+
+            throw new Error(
+                "ECDH anahtar değişimi tamamlanamadı."
+            );
+
+        }
+
+
+        await new Promise(
+            (resolve) => {
+
+                setTimeout(
+                    resolve,
+                    50
+                );
+
+            }
+        );
+
+    }
 
 }
 
@@ -312,7 +680,8 @@ function bufferToBase64(
         );
 
 
-    let binary = "";
+    let binary =
+        "";
 
 
     for (
@@ -339,7 +708,9 @@ function base64ToBuffer(
 ) {
 
     const binary =
-        atob(base64);
+        atob(
+            base64
+        );
 
 
     const bytes =
@@ -375,7 +746,7 @@ async function encryptMessage(
     text
 ) {
 
-    await ensureEncryptionKey();
+    await waitForEncryptionKey();
 
 
     const encoder =
@@ -388,6 +759,11 @@ async function encryptMessage(
         );
 
 
+    /*
+    AES-GCM için her mesajda
+    yeni random IV.
+    */
+
     const iv =
         crypto.getRandomValues(
             new Uint8Array(12)
@@ -398,12 +774,15 @@ async function encryptMessage(
         await crypto.subtle.encrypt(
 
             {
-                name: "AES-GCM",
+                name:
+                    "AES-GCM",
 
-                iv: iv
+                iv:
+                    iv
+
             },
 
-            encryptionKey,
+            sharedEncryptionKey,
 
             data
 
@@ -438,27 +817,36 @@ async function decryptMessage(
     iv
 ) {
 
-    await ensureEncryptionKey();
+    await waitForEncryptionKey();
+
+
+    const ivBuffer =
+        base64ToBuffer(
+            iv
+        );
+
+
+    const encryptedBuffer =
+        base64ToBuffer(
+            ciphertext
+        );
 
 
     const decrypted =
         await crypto.subtle.decrypt(
 
             {
-                name: "AES-GCM",
+                name:
+                    "AES-GCM",
 
                 iv:
-                    base64ToBuffer(
-                        iv
-                    )
+                    ivBuffer
 
             },
 
-            encryptionKey,
+            sharedEncryptionKey,
 
-            base64ToBuffer(
-                ciphertext
-            )
+            encryptedBuffer
 
         );
 
@@ -491,7 +879,9 @@ function addBubble(
 
 
     if (welcome) {
+
         welcome.remove();
+
     }
 
 
@@ -548,8 +938,11 @@ function addBubble(
         ).toLocaleTimeString(
             "tr-TR",
             {
-                hour: "2-digit",
-                minute: "2-digit"
+                hour:
+                    "2-digit",
+
+                minute:
+                    "2-digit"
             }
         );
 
@@ -598,6 +991,7 @@ const sidebar =
         ".sidebar"
     );
 
+
 const sidebarOverlay =
     $("sidebarOverlay");
 
@@ -607,6 +1001,7 @@ function openSidebar() {
     sidebar.classList.add(
         "open"
     );
+
 
     sidebarOverlay.classList.add(
         "open"
@@ -620,6 +1015,7 @@ function closeSidebar() {
     sidebar.classList.remove(
         "open"
     );
+
 
     sidebarOverlay.classList.remove(
         "open"
@@ -641,7 +1037,9 @@ $("menuToggle")
 
                 closeSidebar();
 
-            } else {
+            }
+
+            else {
 
                 openSidebar();
 
@@ -668,17 +1066,22 @@ $("newRoom")
         "click",
         async () => {
 
-            await ensureEncryptionKey();
-
-
             if (
+                !socket ||
                 socket.readyState !==
                 WebSocket.OPEN
             ) {
 
+                alert(
+                    "Sunucu bağlantısı yok."
+                );
+
                 return;
 
             }
+
+
+            await ensureECDHKeyPair();
 
 
             socket.send(
@@ -712,11 +1115,28 @@ $("joinRoom")
 
 
             if (!id) {
+
                 return;
+
             }
 
 
-            await ensureEncryptionKey();
+            if (
+                !socket ||
+                socket.readyState !==
+                WebSocket.OPEN
+            ) {
+
+                alert(
+                    "Sunucu bağlantısı yok."
+                );
+
+                return;
+
+            }
+
+
+            await ensureECDHKeyPair();
 
 
             roomId =
@@ -751,31 +1171,46 @@ $("copyRoom")
         async () => {
 
             if (!roomId) {
+
                 return;
+
             }
 
 
-            await navigator.clipboard
-                .writeText(
-                    roomId
+            try {
+
+                await navigator.clipboard
+                    .writeText(
+                        roomId
+                    );
+
+
+                $("copyRoom")
+                    .textContent =
+                    "✓";
+
+
+                setTimeout(
+                    () => {
+
+                        $("copyRoom")
+                            .textContent =
+                            "⧉";
+
+                    },
+                    1000
                 );
 
+            }
 
-            $("copyRoom")
-                .textContent =
-                "✓";
+            catch (error) {
 
+                console.error(
+                    "Kopyalama hatası:",
+                    error
+                );
 
-            setTimeout(
-                () => {
-
-                    $("copyRoom")
-                        .textContent =
-                        "⧉";
-
-                },
-                1000
-            );
+            }
 
         }
     );
@@ -800,7 +1235,9 @@ $("composer")
 
 
             if (!text) {
+
                 return;
+
             }
 
 
@@ -816,6 +1253,7 @@ $("composer")
 
 
             if (
+                !socket ||
                 socket.readyState !==
                 WebSocket.OPEN
             ) {
@@ -829,11 +1267,73 @@ $("composer")
             }
 
 
-            const encrypted =
-                await encryptMessage(
-                    text
+            /*
+            ==========================================
+            WAIT FOR ECDH
+            ==========================================
+            */
+
+            try {
+
+                await waitForEncryptionKey();
+
+            }
+
+            catch (error) {
+
+                console.error(
+                    "Encryption key hazır değil:",
+                    error
                 );
 
+                alert(
+                    "Diğer kullanıcıyla güvenli bağlantı henüz kurulmadı."
+                );
+
+                return;
+
+            }
+
+
+            /*
+            ==========================================
+            ENCRYPT
+            ==========================================
+            */
+
+            let encrypted;
+
+
+            try {
+
+                encrypted =
+                    await encryptMessage(
+                        text
+                    );
+
+            }
+
+            catch (error) {
+
+                console.error(
+                    "Encryption error:",
+                    error
+                );
+
+                alert(
+                    "Mesaj şifrelenemedi."
+                );
+
+                return;
+
+            }
+
+
+            /*
+            ==========================================
+            SEND CIPHERTEXT
+            ==========================================
+            */
 
             socket.send(
                 JSON.stringify({
@@ -906,6 +1406,7 @@ input.addEventListener(
 
 
         if (
+            socket &&
             socket.readyState ===
             WebSocket.OPEN
         ) {
