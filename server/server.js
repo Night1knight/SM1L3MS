@@ -3,19 +3,40 @@ import http from "http";
 import crypto from "crypto";
 import { WebSocketServer } from "ws";
 
+
 const app = express();
-const server = http.createServer(app);
-const wss = new WebSocketServer({ server });
 
-const PORT = process.env.PORT || 3000;
+const server =
+    http.createServer(app);
 
-const rooms = new Map();
+const wss =
+    new WebSocketServer({
+        server
+    });
 
-const ROOM_TTL = 30 * 60 * 1000;
-const MAX_ROOM_SIZE = 2;
-const MAX_CIPHERTEXT_LENGTH = 100000;
-const MAX_IV_LENGTH = 1000;
-const MAX_PUBLIC_KEY_LENGTH = 5000;
+
+const PORT =
+    process.env.PORT || 3000;
+
+
+const rooms =
+    new Map();
+
+
+const ROOM_TTL =
+    30 * 60 * 1000;
+
+const MAX_ROOM_SIZE =
+    2;
+
+const MAX_CIPHERTEXT_LENGTH =
+    100000;
+
+const MAX_IV_LENGTH =
+    1000;
+
+const MAX_PUBLIC_KEY_LENGTH =
+    5000;
 
 
 /*
@@ -24,7 +45,9 @@ STATIC FILES
 ==========================================
 */
 
-app.use(express.static("public"));
+app.use(
+    express.static("public")
+);
 
 
 /*
@@ -34,7 +57,11 @@ ROOM ID
 */
 
 function generateRoomId() {
-    return crypto.randomBytes(12).toString("base64url");
+
+    return crypto
+        .randomBytes(12)
+        .toString("base64url");
+
 }
 
 
@@ -44,9 +71,15 @@ SEND
 ==========================================
 */
 
-function send(socket, data) {
+function send(
+    socket,
+    data
+) {
 
-    if (socket.readyState === 1) {
+    if (
+        socket &&
+        socket.readyState === 1
+    ) {
 
         socket.send(
             JSON.stringify(data)
@@ -68,6 +101,11 @@ function broadcast(
     data,
     except = null
 ) {
+
+    if (!room) {
+        return;
+    }
+
 
     for (
         const socket of room.sockets
@@ -91,37 +129,44 @@ function broadcast(
 
 /*
 ==========================================
-PUBLIC KEY RELAY
+SEND EXISTING PEER KEYS
 ==========================================
 */
 
-function broadcastPeerKeys(room) {
+function sendExistingPeerKeys(
+    room,
+    targetSocket
+) {
+
+    if (!room || !targetSocket) {
+        return;
+    }
+
 
     for (
-        const socket of room.sockets
+        const [
+            peerSocket,
+            publicKey
+        ]
+        of room.publicKeys
     ) {
 
-        for (
-            const [peerSocket, publicKey]
-            of room.publicKeys
+        if (
+            peerSocket !== targetSocket
         ) {
 
-            if (
-                peerSocket !== socket
-            ) {
+            send(
+                targetSocket,
+                {
 
-                send(
-                    socket,
-                    {
-                        type:
-                            "peer_key",
+                    type:
+                        "peer_key",
 
-                        publicKey:
-                            publicKey
-                    }
-                );
+                    publicKey:
+                        publicKey
 
-            }
+                }
+            );
 
         }
 
@@ -132,13 +177,15 @@ function broadcastPeerKeys(room) {
 
 /*
 ==========================================
-WEBSOCKET CONNECTION
+WEBSOCKET
 ==========================================
 */
 
 wss.on(
     "connection",
     (socket) => {
+
+        socket.roomId = null;
 
 
         /*
@@ -169,16 +216,18 @@ wss.on(
 
                 }
 
-                catch {
+                catch (error) {
 
                     send(
                         socket,
                         {
+
                             type:
                                 "error",
 
                             message:
                                 "Geçersiz veri."
+
                         }
                     );
 
@@ -198,29 +247,62 @@ wss.on(
                     "room_create"
                 ) {
 
+                    /*
+                    Kullanıcı zaten başka
+                    bir odadaysa eski odadan çıkar.
+                    */
+
+                    if (
+                        socket.roomId
+                    ) {
+
+                        const oldRoom =
+                            rooms.get(
+                                socket.roomId
+                            );
+
+
+                        if (oldRoom) {
+
+                            oldRoom.sockets.delete(
+                                socket
+                            );
+
+                            oldRoom.publicKeys.delete(
+                                socket
+                            );
+
+                        }
+
+                    }
+
+
                     const id =
                         generateRoomId();
 
 
+                    const room = {
+
+                        sockets:
+                            new Set([
+                                socket
+                            ]),
+
+                        lastActivity:
+                            Date.now(),
+
+                        lastCiphertext:
+                            null,
+
+                        publicKeys:
+                            new Map()
+
+                    };
+
+
                     rooms.set(
                         id,
-                        {
-
-                            sockets:
-                                new Set([
-                                    socket
-                                ]),
-
-                            lastActivity:
-                                Date.now(),
-
-                            lastCiphertext:
-                                null,
-
-                            publicKeys:
-                                new Map()
-
-                        }
+                        room
                     );
 
 
@@ -261,8 +343,30 @@ wss.on(
                     const requestedRoom =
                         typeof packet.roomId ===
                         "string"
+
                             ? packet.roomId.trim()
+
                             : "";
+
+
+                    if (!requestedRoom) {
+
+                        send(
+                            socket,
+                            {
+
+                                type:
+                                    "error",
+
+                                message:
+                                    "Geçersiz sohbet kodu."
+
+                            }
+                        );
+
+                        return;
+
+                    }
 
 
                     const room =
@@ -291,6 +395,10 @@ wss.on(
                     }
 
 
+                    /*
+                    Oda zaten dolu mu?
+                    */
+
                     if (
                         room.sockets.size >=
                         MAX_ROOM_SIZE
@@ -314,17 +422,50 @@ wss.on(
                     }
 
 
+                    /*
+                    Eski odadan çıkar.
+                    */
+
+                    if (
+                        socket.roomId
+                    ) {
+
+                        const oldRoom =
+                            rooms.get(
+                                socket.roomId
+                            );
+
+
+                        if (oldRoom) {
+
+                            oldRoom.sockets.delete(
+                                socket
+                            );
+
+                            oldRoom.publicKeys.delete(
+                                socket
+                            );
+
+                        }
+
+                    }
+
+
+                    /*
+                    Yeni odaya ekle.
+                    */
+
                     room.sockets.add(
                         socket
                     );
 
 
-                    room.lastActivity =
-                        Date.now();
-
-
                     socket.roomId =
                         requestedRoom;
+
+
+                    room.lastActivity =
+                        Date.now();
 
 
                     send(
@@ -341,6 +482,11 @@ wss.on(
                     );
 
 
+                    /*
+                    Diğer kullanıcıya
+                    peer geldiğini bildir.
+                    */
+
                     broadcast(
                         room,
                         {
@@ -354,14 +500,18 @@ wss.on(
 
 
                     /*
-                    ------------------------------------------
-                    IMPORTANT:
-                    Send already-known public keys.
-                    ------------------------------------------
+                    Odadaki mevcut public key'i
+                    yeni kullanıcıya gönder.
+
+                    Bu özellikle önemli:
+                    ilk kullanıcının public key'i
+                    zaten varsa ikinci kullanıcı
+                    bunu alır.
                     */
 
-                    broadcastPeerKeys(
-                        room
+                    sendExistingPeerKeys(
+                        room,
+                        socket
                     );
 
 
@@ -372,7 +522,7 @@ wss.on(
 
                 /*
                 ==========================================
-                FIND ROOM
+                ROOM CHECK
                 ==========================================
                 */
 
@@ -408,7 +558,7 @@ wss.on(
 
                 /*
                 ==========================================
-                ECDH PUBLIC KEY
+                PUBLIC KEY
                 ==========================================
                 */
 
@@ -422,6 +572,19 @@ wss.on(
                         "string"
                     ) {
 
+                        send(
+                            socket,
+                            {
+
+                                type:
+                                    "error",
+
+                                message:
+                                    "Geçersiz public key."
+
+                            }
+                        );
+
                         return;
 
                     }
@@ -432,15 +595,26 @@ wss.on(
                         MAX_PUBLIC_KEY_LENGTH
                     ) {
 
+                        send(
+                            socket,
+                            {
+
+                                type:
+                                    "error",
+
+                                message:
+                                    "Public key çok uzun."
+
+                            }
+                        );
+
                         return;
 
                     }
 
 
                     /*
-                    ------------------------------------------
-                    Store public key only in RAM.
-                    ------------------------------------------
+                    Public key sadece RAM'de tutulur.
                     */
 
                     room.publicKeys.set(
@@ -450,9 +624,7 @@ wss.on(
 
 
                     /*
-                    ------------------------------------------
-                    Send this public key to the other peer.
-                    ------------------------------------------
+                    Public key'i diğer kullanıcıya gönder.
                     */
 
                     broadcast(
@@ -494,6 +666,19 @@ wss.on(
                         "string"
                     ) {
 
+                        send(
+                            socket,
+                            {
+
+                                type:
+                                    "error",
+
+                                message:
+                                    "Geçersiz şifreli mesaj."
+
+                            }
+                        );
+
                         return;
 
                     }
@@ -503,6 +688,19 @@ wss.on(
                         packet.ciphertext.length >
                         MAX_CIPHERTEXT_LENGTH
                     ) {
+
+                        send(
+                            socket,
+                            {
+
+                                type:
+                                    "error",
+
+                                message:
+                                    "Mesaj çok uzun."
+
+                            }
+                        );
 
                         return;
 
@@ -514,16 +712,33 @@ wss.on(
                         MAX_IV_LENGTH
                     ) {
 
+                        send(
+                            socket,
+                            {
+
+                                type:
+                                    "error",
+
+                                message:
+                                    "Geçersiz IV."
+
+                            }
+                        );
+
                         return;
 
                     }
 
 
                     /*
-                    ------------------------------------------
-                    Server stores only ciphertext.
-                    ------------------------------------------
+                    ==========================================
+                    SUNUCU PLAINTEXT GÖRMEZ
+                    ==========================================
                     */
+
+                    const timestamp =
+                        Date.now();
+
 
                     room.lastCiphertext = {
 
@@ -534,10 +749,14 @@ wss.on(
                             packet.iv,
 
                         timestamp:
-                            Date.now()
+                            timestamp
 
                     };
 
+
+                    /*
+                    Sadece diğer kullanıcıya gönder.
+                    */
 
                     broadcast(
                         room,
@@ -553,7 +772,7 @@ wss.on(
                                 packet.iv,
 
                             timestamp:
-                                Date.now()
+                                timestamp
 
                         },
                         socket
@@ -619,6 +838,8 @@ wss.on(
                         }
                     );
 
+                    return;
+
                 }
 
             }
@@ -627,7 +848,7 @@ wss.on(
 
         /*
         ==========================================
-        DISCONNECT
+        CLOSE
         ==========================================
         */
 
@@ -642,11 +863,13 @@ wss.on(
 
 
                 if (!room) {
-
                     return;
-
                 }
 
+
+                /*
+                Kullanıcıyı odadan çıkar.
+                */
 
                 room.sockets.delete(
                     socket
@@ -654,9 +877,7 @@ wss.on(
 
 
                 /*
-                ------------------------------------------
-                Remove ECDH public key.
-                ------------------------------------------
+                Public key'i sil.
                 */
 
                 room.publicKeys.delete(
@@ -668,6 +889,10 @@ wss.on(
                     Date.now();
 
 
+                /*
+                Diğer kullanıcıya bildir.
+                */
+
                 broadcast(
                     room,
                     {
@@ -678,6 +903,22 @@ wss.on(
                     }
                 );
 
+
+                /*
+                Oda boş kaldıysa
+                hemen sil.
+                */
+
+                if (
+                    room.sockets.size === 0
+                ) {
+
+                    rooms.delete(
+                        socket.roomId
+                    );
+
+                }
+
             }
         );
 
@@ -687,7 +928,7 @@ wss.on(
 
 /*
 ==========================================
-AUTOMATIC ROOM CLEANUP
+ROOM CLEANUP
 ==========================================
 */
 
@@ -699,7 +940,10 @@ setInterval(
 
 
         for (
-            const [id, room]
+            const [
+                id,
+                room
+            ]
             of rooms
         ) {
 
@@ -708,6 +952,43 @@ setInterval(
                 room.lastActivity >
                 ROOM_TTL
             ) {
+
+                /*
+                Oda süresi doldu.
+                */
+
+                for (
+                    const socket
+                    of room.sockets
+                ) {
+
+                    send(
+                        socket,
+                        {
+
+                            type:
+                                "error",
+
+                            message:
+                                "Sohbet süresi doldu."
+
+                        }
+                    );
+
+                    try {
+
+                        socket.close();
+
+                    }
+
+                    catch {
+
+                        // ignore
+
+                    }
+
+                }
+
 
                 rooms.delete(
                     id
